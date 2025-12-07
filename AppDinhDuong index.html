@@ -1,11 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
-  Activity, ShieldAlert, HeartPulse, ChefHat, 
-  Utensils, AlertTriangle, CheckCircle, ChevronRight, 
-  RefreshCcw, FileText, ArrowRight, Brain, 
-  Thermometer, Droplets, Leaf, Beef, XCircle, Info,
-  Flame, BatteryCharging, Stethoscope, Wind, waves,
-  AlertOctagon, Mic, Microscope, LayoutDashboard,
+  Activity, ShieldAlert, ChefHat, 
+  CheckCircle, RefreshCcw, ArrowRight, Brain, 
+  Info, Flame, Stethoscope, Wind,
+  AlertOctagon, Microscope,
   PieChart, Zap, Filter
 } from 'lucide-react';
 
@@ -232,10 +230,9 @@ const calculateStats = (answers) => {
   let scores = {
     liver: 0, stomach: 0, endocrine: 0,
     totalToxin: 0, protection: 0,
-    // Chỉ số dinh dưỡng mới
-    inflammatory: 0, // Chỉ số gây viêm
-    acidic: 0,       // Chỉ số axit hóa
-    antioxidant: 0   // Chỉ số chống oxy hóa
+    inflammatory: 0,
+    acidic: 0,
+    antioxidant: 0
   };
   
   let criticalIssues = [];
@@ -247,37 +244,32 @@ const calculateStats = (answers) => {
       if (ansIdx !== undefined) {
         const opt = q.options[ansIdx];
         
-        // 1. Cộng điểm rủi ro tạng
         scores.liver += opt.risk.liver;
         scores.stomach += opt.risk.stomach;
         scores.endocrine += opt.risk.endocrine;
 
-        // 2. Tính tổng độc tố & bảo vệ
         const riskSum = Math.max(0, opt.risk.liver) + Math.max(0, opt.risk.stomach) + Math.max(0, opt.risk.endocrine);
         if (riskSum > 0) scores.totalToxin += riskSum;
         
         const protectSum = Math.min(0, opt.risk.liver) + Math.min(0, opt.risk.stomach) + Math.min(0, opt.risk.endocrine);
         scores.protection += Math.abs(protectSum);
 
-        // 3. Phân tích dinh dưỡng (Heuristic Logic)
         if (['processed_meat', 'oil', 'alcohol', 'red_meat', 'grill'].includes(q.id)) {
-          if (ansIdx >= 2) scores.inflammatory += 20; // Ăn nhiều thịt chế biến/dầu/rượu -> Gây viêm cao
+          if (ansIdx >= 2) scores.inflammatory += 20;
         }
         if (['veggies', 'fruits', 'spices'].includes(q.id)) {
-          if (ansIdx <= 1) scores.antioxidant += 25; // Ăn nhiều rau/gia vị -> Chống oxy hóa cao
-          if (ansIdx >= 2) scores.acidic += 15;      // Ít rau -> Cơ thể dễ bị axit hóa
+          if (ansIdx <= 1) scores.antioxidant += 25;
+          if (ansIdx >= 2) scores.acidic += 15;
         }
-        if (q.id === 'temp' && ansIdx === 3) scores.inflammatory += 15; // Ăn quá nóng gây viêm thực quản
+        if (q.id === 'temp' && ansIdx === 3) scores.inflammatory += 15;
 
-        // 4. Phát hiện vấn đề nghiêm trọng (Mức 3 hoặc 4)
-        if (ansIdx === 3) { // Chọn phương án tệ nhất
+        if (ansIdx === 3) {
           criticalIssues.push({ question: q.text, answer: opt.text, advice: opt.advice });
         }
       }
     });
   });
 
-  // Xác định Profiling Dinh dưỡng
   if (scores.inflammatory > 30) {
     dietProfile = { 
       type: 'CHẾ ĐỘ ĂN GÂY VIÊM (High-Inflammatory)', 
@@ -302,7 +294,6 @@ const generateMenu = (analysis) => {
   const { criticalIssues, dietProfile } = analysis;
   let menu = [];
 
-  // Logic thực đơn động dựa trên Profile
   if (dietProfile.type.includes('GÂY VIÊM')) {
     menu = [
       { meal: 'Sáng', dish: 'Yến mạch nấu sữa hạt / Trứng luộc', note: 'Tuyệt đối tránh đồ chiên rán, bún phở nhiều mỡ.' },
@@ -326,7 +317,6 @@ const generateMenu = (analysis) => {
     ];
   }
 
-  // Thêm cảnh báo cụ thể nếu có lỗi sai nghiêm trọng
   const plasticIssue = criticalIssues.find(c => c.question.includes('đồ ăn NÓNG'));
   if (plasticIssue) {
     menu.push({ meal: 'LƯU Ý QUAN TRỌNG', dish: 'TUYỆT ĐỐI KHÔNG DÙNG TÚI NILON', note: 'Hãy mua cặp lồng Inox ngay hôm nay. Đây là việc quan trọng nhất bạn cần làm.' });
@@ -338,10 +328,10 @@ const generateMenu = (analysis) => {
 export default function AntiCancerExpertUltimate() {
   const [step, setStep] = useState('intro'); 
   const [currentSection, setCurrentSection] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [analysis, setAnalysis] = useState(null);
+  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [analysis, setAnalysis] = useState<any>(null);
 
-  const handleAnswer = (qId, optIdx) => {
+  const handleAnswer = (qId: string, optIdx: number) => {
     setAnswers(prev => ({ ...prev, [qId]: optIdx }));
   };
 
@@ -355,16 +345,10 @@ export default function AntiCancerExpertUltimate() {
       setTimeout(() => setStep('result'), 2500);
     }
   };
-  
-  const FilterIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-  );
 
-  // --- UI COMPONENTS ---
-  
   const IntroScreen = () => (
     <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1584036561566-b9397f803add?q=80&w=1000&auto=format&fit=crop')] bg-cover opacity-10 blur-sm"></div>
+      <div className="absolute inset-0 bg-cover opacity-10 blur-sm" style={{backgroundImage: "url('https://images.unsplash.com/photo-1584036561566-b9397f803add?q=80&w=1000&auto=format&fit=crop')"}}></div>
       <div className="z-10 text-center max-w-3xl">
         <div className="flex justify-center mb-6">
           <div className="bg-emerald-500/20 p-5 rounded-full border-2 border-emerald-400/30 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
@@ -530,7 +514,7 @@ export default function AntiCancerExpertUltimate() {
           {/* 2. RỦI RO TỪNG TẠNG */}
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-white p-6 rounded-3xl shadow-lg border border-slate-100">
-              <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4"><FilterIcon /> RỦI RO GAN (Liver)</h3>
+              <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4"><Filter size={20}/> RỦI RO GAN (Liver)</h3>
               <div className="flex items-end gap-2 mb-2">
                 <span className="text-4xl font-black text-slate-800">{liverPercent.toFixed(0)}%</span>
                 <span className="text-sm text-slate-400 mb-1">mức độ tổn thương</span>
@@ -561,7 +545,7 @@ export default function AntiCancerExpertUltimate() {
                 <AlertOctagon size={32} /> CÁC YẾU TỐ "TỬ THẦN" CẦN LOẠI BỎ NGAY
               </h3>
               <div className="grid gap-4">
-                {criticalIssues.map((issue, idx) => (
+                {criticalIssues.map((issue: any, idx: number) => (
                   <div key={idx} className="bg-white p-5 rounded-xl shadow-sm border border-red-100 flex flex-col md:flex-row gap-4 items-start">
                     <div className="bg-red-100 text-red-600 font-bold px-3 py-1 rounded text-sm shrink-0">Báo động #{idx+1}</div>
                     <div>
@@ -585,7 +569,7 @@ export default function AntiCancerExpertUltimate() {
               </div>
             </div>
             <div className="p-6 grid md:grid-cols-2 gap-4">
-              {generateMenu({ criticalIssues, dietProfile }).map((item, idx) => (
+              {generateMenu({ criticalIssues, dietProfile }).map((item: any, idx: number) => (
                 <div key={idx} className="flex gap-4 p-4 rounded-xl border border-slate-100 hover:border-emerald-400 hover:shadow-md transition-all bg-white">
                   <div className="shrink-0 w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-500 text-xs uppercase">
                     {item.meal.slice(0,3)}
