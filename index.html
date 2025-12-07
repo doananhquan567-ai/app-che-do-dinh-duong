@@ -7,30 +7,38 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
-        /* Hiệu ứng animation bổ sung */
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin-slow { animation: spin 3s linear infinite; }
     </style>
 </head>
-<body class="bg-slate-900">
+<body class="bg-slate-900 text-slate-100">
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- CẤU HÌNH THƯ VIỆN ---
         const { useState, useEffect } = React;
-        
-        // Lấy icon từ thư viện Lucide đã nhúng
-        const { 
-            Activity, ShieldAlert, ChefHat, CheckCircle, RefreshCcw, 
-            ArrowRight, Brain, Info, Flame, Stethoscope, Wind, 
-            AlertOctagon, Microscope, PieChart, Zap, Filter 
-        } = lucide.icons;
 
-        // --- DỮ LIỆU CÂU HỎI (GIỮ NGUYÊN CODE CỦA BẠN) ---
+        // --- KHẮC PHỤC LỖI: Dùng Component hiển thị Emoji thay vì thư viện Icon ---
+        const Activity = () => <span>💓</span>;
+        const ShieldAlert = () => <span>🛡️</span>;
+        const ChefHat = () => <span>👨‍🍳</span>;
+        const CheckCircle = () => <span>✅</span>;
+        const RefreshCcw = () => <span>🔄</span>;
+        const ArrowRight = () => <span>➡️</span>;
+        const Brain = ({size, className}) => <span className={className} style={{fontSize: size || 24}}>🧠</span>;
+        const Info = () => <span>ℹ️</span>;
+        const Flame = () => <span>🔥</span>;
+        const Stethoscope = ({size}) => <span style={{fontSize: size || 24}}>🩺</span>;
+        const Wind = () => <span>💨</span>;
+        const AlertOctagon = () => <span>🛑</span>;
+        const Microscope = ({size, className}) => <span className={className} style={{fontSize: size || 24}}>🔬</span>;
+        const PieChart = () => <span>📊</span>;
+        const Zap = () => <span>⚡</span>;
+        const Filter = () => <span>🔍</span>;
+
+        // --- DỮ LIỆU CÂU HỎI (GIỮ NGUYÊN) ---
         const SURVEY_SECTIONS = [
           {
             id: 'env_habits',
@@ -248,7 +256,6 @@
           }
         ];
 
-        // --- LOGIC TÍNH TOÁN ---
         const calculateStats = (answers) => {
           let scores = {
             liver: 0, stomach: 0, endocrine: 0,
@@ -295,17 +302,17 @@
 
           if (scores.inflammatory > 30) {
             dietProfile = { 
-              type: 'CHẾ ĐỘ ĂN GÂY VIÊM (High-Inflammatory)', 
+              type: 'CHẾ ĐỘ ĂN GÂY VIÊM', 
               desc: 'Bạn đang nạp quá nhiều tác nhân gây sưng/viêm tế bào (Đường, mỡ xấu, hóa chất). Đây là môi trường lý tưởng để tế bào ung thư phát triển.' 
             };
           } else if (scores.antioxidant < 20) {
             dietProfile = { 
-              type: 'CHẾ ĐỘ ĂN THIẾU HỤT (Depleted)', 
+              type: 'CHẾ ĐỘ ĂN THIẾU HỤT', 
               desc: 'Bạn không nhất thiết ăn đồ độc, nhưng bạn đang "bỏ đói" hệ miễn dịch vì thiếu rau xanh và gia vị bảo vệ.' 
             };
           } else {
             dietProfile = { 
-              type: 'CHẾ ĐỘ ĂN CÂN BẰNG (Balanced)', 
+              type: 'CHẾ ĐỘ ĂN CÂN BẰNG', 
               desc: 'Bạn có sự cân bằng tốt giữa nhóm đa lượng và vi lượng. Hệ miễn dịch đang hoạt động hiệu quả.' 
             };
           }
@@ -352,7 +359,7 @@
         function AntiCancerExpertUltimate() {
           const [step, setStep] = useState('intro'); 
           const [currentSection, setCurrentSection] = useState(0);
-          const [answers, setAnswers] = useState({}); // Đã bỏ typescript type cho bản HTML
+          const [answers, setAnswers] = useState({});
           const [analysis, setAnalysis] = useState(null);
 
           const handleAnswer = (qId, optIdx) => {
@@ -397,7 +404,7 @@
           );
 
           const SurveyScreen = () => (
-            <div className="min-h-screen bg-slate-50 pb-20">
+            <div className="min-h-screen bg-slate-50 pb-20 text-slate-900">
               <div className="bg-white sticky top-0 z-20 shadow-sm border-b border-slate-200">
                 <div className="max-w-4xl mx-auto px-4 py-4">
                   <div className="flex justify-between items-center text-sm font-bold text-slate-500 uppercase mb-2">
@@ -485,13 +492,12 @@
             const stomachPercent = Math.min(100, (scores.stomach / 40) * 100);
             
             return (
-              <div className="min-h-screen bg-slate-50 pb-20 font-sans">
-                {/* Header Report */}
+              <div className="min-h-screen bg-slate-50 pb-20 font-sans text-slate-900">
                 <div className="bg-slate-900 text-white p-6 pb-24 shadow-2xl relative overflow-hidden">
                   <div className="max-w-5xl mx-auto relative z-10">
                     <div className="flex justify-between items-start mb-8">
                        <div className="flex items-center gap-3">
-                         <div className="bg-white/10 p-2 rounded-lg backdrop-blur"><Activity className="text-emerald-400"/></div>
+                         <div className="bg-white/10 p-2 rounded-lg backdrop-blur"><Activity /></div>
                          <div>
                            <h1 className="text-2xl font-bold">BÁO CÁO PHÂN TÍCH CHUYÊN SÂU</h1>
                            <p className="text-slate-400 text-sm">Mã hồ sơ: #AI-FINAL-2024</p>
@@ -504,8 +510,6 @@
                 </div>
 
                 <div className="max-w-5xl mx-auto px-4 -mt-16 space-y-8 relative z-20">
-                  
-                  {/* 1. NEW SECTION: PHÂN TÍCH CHẾ ĐỘ DINH DƯỠNG HIỆN TẠI */}
                   <div className="bg-white rounded-3xl p-8 shadow-xl border-t-8 border-emerald-500 grid md:grid-cols-2 gap-8 items-center">
                     <div>
                       <div className="flex items-center gap-2 text-emerald-600 font-bold mb-2 tracking-wider uppercase text-sm">
@@ -519,7 +523,7 @@
                       <div className="space-y-4">
                         <div>
                           <div className="flex justify-between text-sm mb-1">
-                            <span className="text-slate-600">Mức độ Gây viêm (Inflammation)</span>
+                            <span className="text-slate-600">Mức độ Gây viêm</span>
                             <span className="font-bold text-red-500">{scores.inflammatory > 30 ? 'CAO' : 'THẤP'}</span>
                           </div>
                           <div className="h-2 bg-slate-200 rounded-full"><div className={`h-full rounded-full ${scores.inflammatory > 30 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{width: `${Math.min(100, scores.inflammatory*1.5)}%`}}></div></div>
@@ -535,7 +539,6 @@
                     </div>
                   </div>
 
-                  {/* 2. RỦI RO TỪNG TẠNG */}
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="bg-white p-6 rounded-3xl shadow-lg border border-slate-100">
                       <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4"><Filter size={20}/> RỦI RO GAN (Liver)</h3>
@@ -562,7 +565,6 @@
                     </div>
                   </div>
 
-                  {/* 3. CẢNH BÁO ĐỎ (CRITICAL) */}
                   {criticalIssues.length > 0 && (
                     <div className="bg-red-50 border-2 border-red-500 rounded-3xl p-8 shadow-sm animate-pulse-slow">
                       <h3 className="text-2xl font-black text-red-700 mb-6 flex items-center gap-3">
@@ -583,7 +585,6 @@
                     </div>
                   )}
 
-                  {/* 4. PHÁC ĐỒ DINH DƯỠNG */}
                   <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-slate-100">
                     <div className="bg-emerald-50 p-6 border-b border-emerald-100 flex items-center gap-3">
                       <div className="bg-emerald-200 p-2 rounded text-emerald-800"><ChefHat /></div>
@@ -614,7 +615,6 @@
             );
           };
 
-          // --- RENDER APP ---
           const root = ReactDOM.createRoot(document.getElementById('root'));
           root.render(<AntiCancerExpertUltimate />);
     </script>
