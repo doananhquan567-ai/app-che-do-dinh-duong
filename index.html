@@ -1,622 +1,601 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chuyên Gia Phân Tích Sức Khỏe</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <style>
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .animate-spin-slow { animation: spin 3s linear infinite; }
-    </style>
-</head>
-<body class="bg-slate-900 text-slate-100">
-    <div id="root"></div>
+import React, { useState } from 'react';
+import { 
+  Activity, ChefHat, 
+  CheckCircle, RefreshCcw, ArrowRight, Brain, 
+  Info, Flame, Stethoscope, 
+  AlertOctagon, Microscope,
+  PieChart, Zap, Filter
+} from 'lucide-react';
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+// --- DỮ LIỆU 20 CÂU HỎI CHUẨN HÓA (4 LEVELS/CÂU) ---
+const SURVEY_SECTIONS = [
+  {
+    id: 'env_habits',
+    title: 'PHẦN 1: MÔI TRƯỜNG & VỆ SINH',
+    desc: 'Đánh giá các yếu tố độc tố ngoại sinh và thói quen vệ sinh.',
+    questions: [
+      {
+        id: 'water',
+        text: '1. Nguồn nước ăn uống chính của gia đình?',
+        options: [
+          { text: 'Nước máy / Nước đóng bình chuẩn', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'An toàn.' },
+          { text: 'Nước mưa / Giếng khoan (Lọc RO)', risk: { liver: 2, stomach: 1, endocrine: 0 }, advice: 'Tạm ổn, cần thay lõi lọc chuẩn.' },
+          { text: 'Nước đun sôi (Không qua lọc)', risk: { liver: 5, stomach: 3, endocrine: 2 }, advice: 'Rủi ro: Đun sôi không loại bỏ được kim loại nặng.' },
+          { text: 'Nước giếng / Nước mưa (Dùng trực tiếp)', risk: { liver: 10, stomach: 8, endocrine: 5 }, advice: 'NGUY HIỂM: Nguy cơ cao nhiễm Asen & Vi sinh vật.' }
+        ]
+      },
+      {
+        id: 'plastic_hot',
+        text: '2. Thói quen đựng đồ ăn NÓNG (bún, phở) mang về?',
+        options: [
+          { text: 'Luôn mang cặp lồng Inox / Bát sứ', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Tuyệt vời. Không nhiễm nhựa.' },
+          { text: 'Đợi nguội bớt rồi mới đổ vào túi', risk: { liver: 3, stomach: 1, endocrine: 3 }, advice: 'Vẫn còn rủi ro vi nhựa thấp.' },
+          { text: 'Đổ vào hộp xốp/túi nilon khi còn ấm', risk: { liver: 6, stomach: 3, endocrine: 7 }, advice: 'Cảnh báo: Nhựa bắt đầu phân hủy ở nhiệt độ ấm.' },
+          { text: 'Đổ trực tiếp khi đang bốc khói (Nóng rẫy)', risk: { liver: 9, stomach: 5, endocrine: 12 }, advice: 'BÁO ĐỘNG ĐỎ: Giải phóng ồ ạt Phthalates & BPA vào thức ăn.' }
+        ]
+      },
+      {
+        id: 'pan',
+        text: '3. Tình trạng chảo chống dính đang dùng?',
+        options: [
+          { text: 'Chảo Gang / Inox / Đá (Không phủ Teflon)', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'An toàn nhất.' },
+          { text: 'Chảo chống dính mới, chưa xước', risk: { liver: 1, stomach: 0, endocrine: 1 }, advice: 'An toàn nếu không đun quá nóng.' },
+          { text: 'Có vài vết xước nhỏ', risk: { liver: 5, stomach: 2, endocrine: 5 }, advice: 'Cảnh báo: Lớp độc tố bắt đầu lộ ra.' },
+          { text: 'Bong tróc nhiều, lộ kim loại đáy', risk: { liver: 9, stomach: 4, endocrine: 9 }, advice: 'NGUY HIỂM: Bạn đang ăn PFOA (hóa chất vĩnh cửu) mỗi ngày.' }
+        ]
+      },
+      {
+        id: 'mold',
+        text: '4. Xử lý khi thực phẩm (lạc, đậu, bánh) bị mốc?',
+        options: [
+          { text: 'Vứt bỏ toàn bộ ngay lập tức', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Chuẩn xác.' },
+          { text: 'Vứt bỏ vùng mốc + vùng xung quanh rộng', risk: { liver: 4, stomach: 2, endocrine: 0 }, advice: 'Rủi ro: Chân nấm có thể lan xa hơn bạn thấy.' },
+          { text: 'Chỉ cắt bỏ phần mốc nhìn thấy', risk: { liver: 8, stomach: 5, endocrine: 0 }, advice: 'Nguy hiểm: Độc tố vẫn còn trong phần "nhìn có vẻ sạch".' },
+          { text: 'Rửa sạch/Nấu kỹ lại rồi ăn', risk: { liver: 12, stomach: 8, endocrine: 0 }, advice: 'SAI LẦM CHẾT NGƯỜI: Aflatoxin bền với nhiệt, gây ung thư gan.' }
+        ]
+      },
+      {
+        id: 'oil',
+        text: '5. Bạn xử lý dầu thừa sau khi chiên rán?',
+        options: [
+          { text: 'Đổ bỏ hoàn toàn', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Tốt.' },
+          { text: 'Giữ lại để xào rau nhẹ', risk: { liver: 4, stomach: 2, endocrine: 1 }, advice: 'Dầu đã bắt đầu biến chất.' },
+          { text: 'Giữ lại kho cá (nhiệt độ cao lâu)', risk: { liver: 7, stomach: 4, endocrine: 2 }, advice: 'Cảnh báo: Sinh ra nhiều chất oxy hóa.' },
+          { text: 'Giữ lại chiên đi chiên lại nhiều lần', risk: { liver: 10, stomach: 7, endocrine: 3 }, advice: 'ĐỘC HẠI: Chứa nồng độ cao Aldehydes & Acrolein.' }
+        ]
+      },
+      {
+        id: 'microwave',
+        text: '6. Sử dụng lò vi sóng (Microwave)?',
+        options: [
+          { text: 'Chỉ dùng bát sứ/thủy tinh', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'An toàn.' },
+          { text: 'Dùng hộp nhựa "Microwave Safe" còn mới', risk: { liver: 1, stomach: 0, endocrine: 2 }, advice: 'Chấp nhận được.' },
+          { text: 'Dùng hộp nhựa cũ/xước', risk: { liver: 4, stomach: 2, endocrine: 5 }, advice: 'Cảnh báo: Nhựa cũ dễ thôi nhiễm.' },
+          { text: 'Quay cả túi nilon/màng bọc/hộp xốp', risk: { liver: 7, stomach: 3, endocrine: 10 }, advice: 'NGUY HIỂM: Nhựa chảy trực tiếp vào thức ăn.' }
+        ]
+      },
+      {
+        id: 'chopsticks',
+        text: '7. Vệ sinh thớt và đũa ăn?',
+        options: [
+          { text: 'Dùng Inox / Thay mới mỗi 6 tháng', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Sạch sẽ.' },
+          { text: 'Dùng khoảng 1 năm mới thay', risk: { liver: 2, stomach: 2, endocrine: 0 }, advice: 'Nên thay sớm hơn.' },
+          { text: 'Dùng đến khi gãy hỏng', risk: { liver: 6, stomach: 5, endocrine: 0 }, advice: 'Nguy cơ nấm mốc trong khe nứt.' },
+          { text: 'Vẫn dùng dù đã mốc đen', risk: { liver: 10, stomach: 8, endocrine: 0 }, advice: 'Ổ chứa Aflatoxin và E.coli.' }
+        ]
+      },
+      {
+        id: 'dishwashing',
+        text: '8. Cách rửa bát đĩa?',
+        options: [
+          { text: 'Rửa kỹ dưới vòi nước chảy', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Sạch.' },
+          { text: 'Rửa 2-3 nước trong chậu', risk: { liver: 1, stomach: 1, endocrine: 0 }, advice: 'Tương đối sạch.' },
+          { text: 'Tráng qua loa trong chậu nước cũ', risk: { liver: 4, stomach: 5, endocrine: 0 }, advice: 'Nguy cơ tồn dư hóa chất và vi khuẩn.' },
+          { text: 'Dùng quá nhiều nước rửa bát, ít tráng', risk: { liver: 6, stomach: 6, endocrine: 2 }, advice: 'Ăn phải hóa chất tẩy rửa hàng ngày.' }
+        ]
+      },
+      {
+        id: 'smoke',
+        text: '9. Khói thuốc lá trong môi trường sống?',
+        options: [
+          { text: 'Môi trường không khói thuốc', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Tốt.' },
+          { text: 'Thỉnh thoảng có người hút', risk: { liver: 2, stomach: 1, endocrine: 1 }, advice: 'Nên tránh xa.' },
+          { text: 'Thường xuyên (Hút thụ động)', risk: { liver: 6, stomach: 4, endocrine: 4 }, advice: 'Nguy cơ ung thư phổi cao.' },
+          { text: 'Bản thân hút thuốc', risk: { liver: 10, stomach: 8, endocrine: 8 }, advice: 'Tác nhân ung thư hàng đầu.' }
+        ]
+      },
+      {
+        id: 'thawing',
+        text: '10. Cách rã đông thực phẩm?',
+        options: [
+          { text: 'Ngăn mát tủ lạnh (từ tối hôm trước)', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Chuẩn nhất.' },
+          { text: 'Lò vi sóng', risk: { liver: 0, stomach: 1, endocrine: 0 }, advice: 'An toàn nếu nấu ngay.' },
+          { text: 'Ngâm nước lạnh (có bọc kín)', risk: { liver: 2, stomach: 3, endocrine: 0 }, advice: 'Tạm ổn.' },
+          { text: 'Ngâm trực tiếp nước lã / Để nhiệt độ phòng', risk: { liver: 5, stomach: 8, endocrine: 0 }, advice: 'Vi khuẩn sinh sôi gấp ngàn lần.' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'diet_habits',
+    title: 'PHẦN 2: THÓI QUEN ĂN UỐNG',
+    desc: 'Phân tích chế độ dinh dưỡng hàng ngày.',
+    questions: [
+      {
+        id: 'veggies',
+        text: '11. Tỷ lệ rau xanh trong khẩu phần ăn?',
+        options: [
+          { text: '> 50% (Ăn rau nhiều hơn cơm/thịt)', risk: { liver: -5, stomach: -5, endocrine: -5 }, advice: 'Tuyệt vời: Giàu chất xơ thải độc.' },
+          { text: 'Khoảng 30% (Có bát canh/đĩa rau)', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Mức trung bình.' },
+          { text: 'Rất ít (Chỉ vài cọng hành/rau thơm)', risk: { liver: 5, stomach: 4, endocrine: 3 }, advice: 'Thiếu hụt: Cơ thể không đủ chất chống oxy hóa.' },
+          { text: 'Gần như không ăn rau', risk: { liver: 8, stomach: 7, endocrine: 6 }, advice: 'LỖ HỔNG LỚN: Nguy cơ táo bón và tích tụ độc tố ruột.' }
+        ]
+      },
+      {
+        id: 'processed_meat',
+        text: '12. Tần suất ăn thịt chế biến sẵn (Xúc xích, thịt hộp)?',
+        options: [
+          { text: 'Không bao giờ / Rất hiếm', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Tốt.' },
+          { text: 'Thỉnh thoảng (1-2 lần/tháng)', risk: { liver: 2, stomach: 3, endocrine: 1 }, advice: 'Chấp nhận được.' },
+          { text: 'Thường xuyên (1-2 lần/tuần)', risk: { liver: 5, stomach: 7, endocrine: 3 }, advice: 'Cảnh báo: Tích tụ Nitrosamine.' },
+          { text: 'Hàng ngày (Là món chính)', risk: { liver: 8, stomach: 12, endocrine: 5 }, advice: 'NGUY CƠ CAO: Nhóm chất gây ung thư loại 1.' }
+        ]
+      },
+      {
+        id: 'red_meat',
+        text: '13. Tần suất ăn thịt đỏ (Bò, lợn, trâu, dê)?',
+        options: [
+          { text: '1-2 lần/tuần (Ưu tiên cá/gia cầm)', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Cân bằng.' },
+          { text: '3-4 lần/tuần', risk: { liver: 2, stomach: 2, endocrine: 1 }, advice: 'Hơi nhiều.' },
+          { text: 'Ăn hàng ngày', risk: { liver: 5, stomach: 6, endocrine: 2 }, advice: 'Gánh nặng cho đường ruột.' },
+          { text: 'Ăn mỗi bữa (Thích thịt hơn rau)', risk: { liver: 8, stomach: 9, endocrine: 4 }, advice: 'Tăng nguy cơ ung thư đại trực tràng.' }
+        ]
+      },
+      {
+        id: 'pickles',
+        text: '14. Thói quen ăn dưa cà muối?',
+        options: [
+          { text: 'Không ăn / Chỉ ăn dưa chín vàng', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Tốt.' },
+          { text: 'Thỉnh thoảng ăn dưa xổi', risk: { liver: 2, stomach: 3, endocrine: 0 }, advice: 'Hạn chế.' },
+          { text: 'Thường xuyên ăn dưa cà nén', risk: { liver: 4, stomach: 5, endocrine: 0 }, advice: 'Nhiều muối hại dạ dày.' },
+          { text: 'Nghiện dưa muối xổi (còn xanh, hăng)', risk: { liver: 6, stomach: 10, endocrine: 0 }, advice: 'Chứa hàm lượng Nitrit cực cao.' }
+        ]
+      },
+      {
+        id: 'temp',
+        text: '15. Nhiệt độ thức ăn ưa thích?',
+        options: [
+          { text: 'Nguội / Mát', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'An toàn.' },
+          { text: 'Ấm vừa phải', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Tốt nhất cho tiêu hóa.' },
+          { text: 'Nóng (Vừa thổi vừa ăn)', risk: { liver: 0, stomach: 5, endocrine: 0 }, advice: 'Cẩn thận niêm mạc.' },
+          { text: 'Rất nóng (Bỏng rát lưỡi mới ngon)', risk: { liver: 0, stomach: 12, endocrine: 0 }, advice: 'NGUY HIỂM: Gây viêm teo và ung thư thực quản.' }
+        ]
+      },
+      {
+        id: 'alcohol',
+        text: '16. Mức độ sử dụng rượu bia?',
+        options: [
+          { text: 'Không uống', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Gan được bảo vệ tối đa.' },
+          { text: 'Xã giao (1-2 chén/tháng)', risk: { liver: 2, stomach: 1, endocrine: 1 }, advice: 'Gan đủ sức phục hồi.' },
+          { text: 'Thường xuyên (Tuần nào cũng nhậu)', risk: { liver: 7, stomach: 5, endocrine: 4 }, advice: 'Gánh nặng lớn cho gan.' },
+          { text: 'Hàng ngày / Nghiện rượu', risk: { liver: 12, stomach: 8, endocrine: 7 }, advice: 'BÁO ĐỘNG: Acetaldehyde phá hủy tế bào gan trực tiếp.' }
+        ]
+      },
+      {
+        id: 'grill',
+        text: '17. Thói quen ăn đồ nướng/chiên rán?',
+        options: [
+          { text: 'Hấp luộc là chính', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Lành mạnh.' },
+          { text: 'Thỉnh thoảng (Cuối tuần)', risk: { liver: 2, stomach: 1, endocrine: 0 }, advice: 'Chấp nhận được.' },
+          { text: 'Thường xuyên (3-4 lần/tuần)', risk: { liver: 5, stomach: 4, endocrine: 2 }, advice: 'Nạp nhiều chất oxy hóa.' },
+          { text: 'Rất thích ăn cháy cạnh/giòn tan', risk: { liver: 8, stomach: 7, endocrine: 3 }, advice: 'Chứa HCA và PAH gây đột biến gen.' }
+        ]
+      },
+      {
+        id: 'fruits',
+        text: '18. Ăn trái cây hàng ngày?',
+        options: [
+          { text: 'Ăn đa dạng các loại mỗi ngày', risk: { liver: -3, stomach: -2, endocrine: -2 }, advice: 'Tốt.' },
+          { text: 'Thường xuyên (3-4 lần/tuần)', risk: { liver: -1, stomach: -1, endocrine: -1 }, advice: 'Khá.' },
+          { text: 'Thỉnh thoảng mới ăn', risk: { liver: 2, stomach: 1, endocrine: 0 }, advice: 'Thiếu Vitamin.' },
+          { text: 'Gần như không ăn', risk: { liver: 4, stomach: 3, endocrine: 1 }, advice: 'Thiếu hụt vi chất bảo vệ.' }
+        ]
+      },
+      {
+        id: 'nuts',
+        text: '19. Ăn các loại hạt (Lạc, vừng, óc chó)?',
+        options: [
+          { text: 'Thường xuyên (làm bữa phụ)', risk: { liver: -2, stomach: 0, endocrine: -2 }, advice: 'Giàu Omega-3.' },
+          { text: 'Thỉnh thoảng', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Tốt.' },
+          { text: 'Hiếm khi', risk: { liver: 1, stomach: 0, endocrine: 0 }, advice: 'Bỏ lỡ nguồn chất béo tốt.' },
+          { text: 'Không ăn', risk: { liver: 2, stomach: 0, endocrine: 0 }, advice: 'Thiếu Selen.' }
+        ]
+      },
+      {
+        id: 'spices',
+        text: '20. Sử dụng gia vị thảo mộc (Tỏi, nghệ, gừng)?',
+        options: [
+          { text: 'Dùng rất nhiều trong mọi món', risk: { liver: -4, stomach: -3, endocrine: -2 }, advice: 'Kháng sinh tự nhiên cực mạnh.' },
+          { text: 'Dùng bình thường', risk: { liver: -1, stomach: -1, endocrine: 0 }, advice: 'Tốt.' },
+          { text: 'Ít dùng', risk: { liver: 2, stomach: 1, endocrine: 0 }, advice: 'Nên tăng cường.' },
+          { text: 'Không ăn được / Ghét mùi', risk: { liver: 4, stomach: 3, endocrine: 1 }, advice: 'Thiếu hụt chất kháng viêm tự nhiên.' }
+        ]
+      }
+    ]
+  }
+];
 
-        // --- KHẮC PHỤC LỖI: Dùng Component hiển thị Emoji thay vì thư viện Icon ---
-        const Activity = () => <span>💓</span>;
-        const ShieldAlert = () => <span>🛡️</span>;
-        const ChefHat = () => <span>👨‍🍳</span>;
-        const CheckCircle = () => <span>✅</span>;
-        const RefreshCcw = () => <span>🔄</span>;
-        const ArrowRight = () => <span>➡️</span>;
-        const Brain = ({size, className}) => <span className={className} style={{fontSize: size || 24}}>🧠</span>;
-        const Info = () => <span>ℹ️</span>;
-        const Flame = () => <span>🔥</span>;
-        const Stethoscope = ({size}) => <span style={{fontSize: size || 24}}>🩺</span>;
-        const Wind = () => <span>💨</span>;
-        const AlertOctagon = () => <span>🛑</span>;
-        const Microscope = ({size, className}) => <span className={className} style={{fontSize: size || 24}}>🔬</span>;
-        const PieChart = () => <span>📊</span>;
-        const Zap = () => <span>⚡</span>;
-        const Filter = () => <span>🔍</span>;
+// --- LOGIC PHÂN TÍCH ---
+const calculateStats = (answers) => {
+  let scores = {
+    liver: 0, stomach: 0, endocrine: 0,
+    totalToxin: 0, protection: 0,
+    inflammatory: 0,
+    acidic: 0,
+    antioxidant: 0
+  };
+  
+  let criticalIssues = [];
+  let dietProfile = { type: '', desc: '' };
 
-        // --- DỮ LIỆU CÂU HỎI (GIỮ NGUYÊN) ---
-        const SURVEY_SECTIONS = [
-          {
-            id: 'env_habits',
-            title: 'PHẦN 1: MÔI TRƯỜNG & VỆ SINH',
-            desc: 'Đánh giá các yếu tố độc tố ngoại sinh và thói quen vệ sinh.',
-            questions: [
-              {
-                id: 'water',
-                text: '1. Nguồn nước ăn uống chính của gia đình?',
-                options: [
-                  { text: 'Nước máy / Nước đóng bình chuẩn', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'An toàn.' },
-                  { text: 'Nước mưa / Giếng khoan (Lọc RO)', risk: { liver: 2, stomach: 1, endocrine: 0 }, advice: 'Tạm ổn, cần thay lõi lọc chuẩn.' },
-                  { text: 'Nước đun sôi (Không qua lọc)', risk: { liver: 5, stomach: 3, endocrine: 2 }, advice: 'Rủi ro: Đun sôi không loại bỏ được kim loại nặng.' },
-                  { text: 'Nước giếng / Nước mưa (Dùng trực tiếp)', risk: { liver: 10, stomach: 8, endocrine: 5 }, advice: 'NGUY HIỂM: Nguy cơ cao nhiễm Asen & Vi sinh vật.' }
-                ]
-              },
-              {
-                id: 'plastic_hot',
-                text: '2. Thói quen đựng đồ ăn NÓNG (bún, phở) mang về?',
-                options: [
-                  { text: 'Luôn mang cặp lồng Inox / Bát sứ', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Tuyệt vời. Không nhiễm nhựa.' },
-                  { text: 'Đợi nguội bớt rồi mới đổ vào túi', risk: { liver: 3, stomach: 1, endocrine: 3 }, advice: 'Vẫn còn rủi ro vi nhựa thấp.' },
-                  { text: 'Đổ vào hộp xốp/túi nilon khi còn ấm', risk: { liver: 6, stomach: 3, endocrine: 7 }, advice: 'Cảnh báo: Nhựa bắt đầu phân hủy ở nhiệt độ ấm.' },
-                  { text: 'Đổ trực tiếp khi đang bốc khói (Nóng rẫy)', risk: { liver: 9, stomach: 5, endocrine: 12 }, advice: 'BÁO ĐỘNG ĐỎ: Giải phóng ồ ạt Phthalates & BPA vào thức ăn.' }
-                ]
-              },
-              {
-                id: 'pan',
-                text: '3. Tình trạng chảo chống dính đang dùng?',
-                options: [
-                  { text: 'Chảo Gang / Inox / Đá (Không phủ Teflon)', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'An toàn nhất.' },
-                  { text: 'Chảo chống dính mới, chưa xước', risk: { liver: 1, stomach: 0, endocrine: 1 }, advice: 'An toàn nếu không đun quá nóng.' },
-                  { text: 'Có vài vết xước nhỏ', risk: { liver: 5, stomach: 2, endocrine: 5 }, advice: 'Cảnh báo: Lớp độc tố bắt đầu lộ ra.' },
-                  { text: 'Bong tróc nhiều, lộ kim loại đáy', risk: { liver: 9, stomach: 4, endocrine: 9 }, advice: 'NGUY HIỂM: Bạn đang ăn PFOA (hóa chất vĩnh cửu) mỗi ngày.' }
-                ]
-              },
-              {
-                id: 'mold',
-                text: '4. Xử lý khi thực phẩm (lạc, đậu, bánh) bị mốc?',
-                options: [
-                  { text: 'Vứt bỏ toàn bộ ngay lập tức', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Chuẩn xác.' },
-                  { text: 'Vứt bỏ vùng mốc + vùng xung quanh rộng', risk: { liver: 4, stomach: 2, endocrine: 0 }, advice: 'Rủi ro: Chân nấm có thể lan xa hơn bạn thấy.' },
-                  { text: 'Chỉ cắt bỏ phần mốc nhìn thấy', risk: { liver: 8, stomach: 5, endocrine: 0 }, advice: 'Nguy hiểm: Độc tố vẫn còn trong phần "nhìn có vẻ sạch".' },
-                  { text: 'Rửa sạch/Nấu kỹ lại rồi ăn', risk: { liver: 12, stomach: 8, endocrine: 0 }, advice: 'SAI LẦM CHẾT NGƯỜI: Aflatoxin bền với nhiệt, gây ung thư gan.' }
-                ]
-              },
-              {
-                id: 'oil',
-                text: '5. Bạn xử lý dầu thừa sau khi chiên rán?',
-                options: [
-                  { text: 'Đổ bỏ hoàn toàn', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Tốt.' },
-                  { text: 'Giữ lại để xào rau nhẹ', risk: { liver: 4, stomach: 2, endocrine: 1 }, advice: 'Dầu đã bắt đầu biến chất.' },
-                  { text: 'Giữ lại kho cá (nhiệt độ cao lâu)', risk: { liver: 7, stomach: 4, endocrine: 2 }, advice: 'Cảnh báo: Sinh ra nhiều chất oxy hóa.' },
-                  { text: 'Giữ lại chiên đi chiên lại nhiều lần', risk: { liver: 10, stomach: 7, endocrine: 3 }, advice: 'ĐỘC HẠI: Chứa nồng độ cao Aldehydes & Acrolein.' }
-                ]
-              },
-              {
-                id: 'microwave',
-                text: '6. Sử dụng lò vi sóng (Microwave)?',
-                options: [
-                  { text: 'Chỉ dùng bát sứ/thủy tinh', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'An toàn.' },
-                  { text: 'Dùng hộp nhựa "Microwave Safe" còn mới', risk: { liver: 1, stomach: 0, endocrine: 2 }, advice: 'Chấp nhận được.' },
-                  { text: 'Dùng hộp nhựa cũ/xước', risk: { liver: 4, stomach: 2, endocrine: 5 }, advice: 'Cảnh báo: Nhựa cũ dễ thôi nhiễm.' },
-                  { text: 'Quay cả túi nilon/màng bọc/hộp xốp', risk: { liver: 7, stomach: 3, endocrine: 10 }, advice: 'NGUY HIỂM: Nhựa chảy trực tiếp vào thức ăn.' }
-                ]
-              },
-              {
-                id: 'chopsticks',
-                text: '7. Vệ sinh thớt và đũa ăn?',
-                options: [
-                  { text: 'Dùng Inox / Thay mới mỗi 6 tháng', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Sạch sẽ.' },
-                  { text: 'Dùng khoảng 1 năm mới thay', risk: { liver: 2, stomach: 2, endocrine: 0 }, advice: 'Nên thay sớm hơn.' },
-                  { text: 'Dùng đến khi gãy hỏng', risk: { liver: 6, stomach: 5, endocrine: 0 }, advice: 'Nguy cơ nấm mốc trong khe nứt.' },
-                  { text: 'Vẫn dùng dù đã mốc đen', risk: { liver: 10, stomach: 8, endocrine: 0 }, advice: 'Ổ chứa Aflatoxin và E.coli.' }
-                ]
-              },
-              {
-                id: 'dishwashing',
-                text: '8. Cách rửa bát đĩa?',
-                options: [
-                  { text: 'Rửa kỹ dưới vòi nước chảy', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Sạch.' },
-                  { text: 'Rửa 2-3 nước trong chậu', risk: { liver: 1, stomach: 1, endocrine: 0 }, advice: 'Tương đối sạch.' },
-                  { text: 'Tráng qua loa trong chậu nước cũ', risk: { liver: 4, stomach: 5, endocrine: 0 }, advice: 'Nguy cơ tồn dư hóa chất và vi khuẩn.' },
-                  { text: 'Dùng quá nhiều nước rửa bát, ít tráng', risk: { liver: 6, stomach: 6, endocrine: 2 }, advice: 'Ăn phải hóa chất tẩy rửa hàng ngày.' }
-                ]
-              },
-              {
-                id: 'smoke',
-                text: '9. Khói thuốc lá trong môi trường sống?',
-                options: [
-                  { text: 'Môi trường không khói thuốc', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Tốt.' },
-                  { text: 'Thỉnh thoảng có người hút', risk: { liver: 2, stomach: 1, endocrine: 1 }, advice: 'Nên tránh xa.' },
-                  { text: 'Thường xuyên (Hút thụ động)', risk: { liver: 6, stomach: 4, endocrine: 4 }, advice: 'Nguy cơ ung thư phổi cao.' },
-                  { text: 'Bản thân hút thuốc', risk: { liver: 10, stomach: 8, endocrine: 8 }, advice: 'Tác nhân ung thư hàng đầu.' }
-                ]
-              },
-              {
-                id: 'thawing',
-                text: '10. Cách rã đông thực phẩm?',
-                options: [
-                  { text: 'Ngăn mát tủ lạnh (từ tối hôm trước)', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Chuẩn nhất.' },
-                  { text: 'Lò vi sóng', risk: { liver: 0, stomach: 1, endocrine: 0 }, advice: 'An toàn nếu nấu ngay.' },
-                  { text: 'Ngâm nước lạnh (có bọc kín)', risk: { liver: 2, stomach: 3, endocrine: 0 }, advice: 'Tạm ổn.' },
-                  { text: 'Ngâm trực tiếp nước lã / Để nhiệt độ phòng', risk: { liver: 5, stomach: 8, endocrine: 0 }, advice: 'Vi khuẩn sinh sôi gấp ngàn lần.' }
-                ]
-              }
-            ]
-          },
-          {
-            id: 'diet_habits',
-            title: 'PHẦN 2: THÓI QUEN ĂN UỐNG',
-            desc: 'Phân tích chế độ dinh dưỡng hàng ngày.',
-            questions: [
-              {
-                id: 'veggies',
-                text: '11. Tỷ lệ rau xanh trong khẩu phần ăn?',
-                options: [
-                  { text: '> 50% (Ăn rau nhiều hơn cơm/thịt)', risk: { liver: -5, stomach: -5, endocrine: -5 }, advice: 'Tuyệt vời: Giàu chất xơ thải độc.' },
-                  { text: 'Khoảng 30% (Có bát canh/đĩa rau)', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Mức trung bình.' },
-                  { text: 'Rất ít (Chỉ vài cọng hành/rau thơm)', risk: { liver: 5, stomach: 4, endocrine: 3 }, advice: 'Thiếu hụt: Cơ thể không đủ chất chống oxy hóa.' },
-                  { text: 'Gần như không ăn rau', risk: { liver: 8, stomach: 7, endocrine: 6 }, advice: 'LỖ HỔNG LỚN: Nguy cơ táo bón và tích tụ độc tố ruột.' }
-                ]
-              },
-              {
-                id: 'processed_meat',
-                text: '12. Tần suất ăn thịt chế biến sẵn (Xúc xích, thịt hộp)?',
-                options: [
-                  { text: 'Không bao giờ / Rất hiếm', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Tốt.' },
-                  { text: 'Thỉnh thoảng (1-2 lần/tháng)', risk: { liver: 2, stomach: 3, endocrine: 1 }, advice: 'Chấp nhận được.' },
-                  { text: 'Thường xuyên (1-2 lần/tuần)', risk: { liver: 5, stomach: 7, endocrine: 3 }, advice: 'Cảnh báo: Tích tụ Nitrosamine.' },
-                  { text: 'Hàng ngày (Là món chính)', risk: { liver: 8, stomach: 12, endocrine: 5 }, advice: 'NGUY CƠ CAO: Nhóm chất gây ung thư loại 1.' }
-                ]
-              },
-              {
-                id: 'red_meat',
-                text: '13. Tần suất ăn thịt đỏ (Bò, lợn, trâu, dê)?',
-                options: [
-                  { text: '1-2 lần/tuần (Ưu tiên cá/gia cầm)', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Cân bằng.' },
-                  { text: '3-4 lần/tuần', risk: { liver: 2, stomach: 2, endocrine: 1 }, advice: 'Hơi nhiều.' },
-                  { text: 'Ăn hàng ngày', risk: { liver: 5, stomach: 6, endocrine: 2 }, advice: 'Gánh nặng cho đường ruột.' },
-                  { text: 'Ăn mỗi bữa (Thích thịt hơn rau)', risk: { liver: 8, stomach: 9, endocrine: 4 }, advice: 'Tăng nguy cơ ung thư đại trực tràng.' }
-                ]
-              },
-              {
-                id: 'pickles',
-                text: '14. Thói quen ăn dưa cà muối?',
-                options: [
-                  { text: 'Không ăn / Chỉ ăn dưa chín vàng', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Tốt.' },
-                  { text: 'Thỉnh thoảng ăn dưa xổi', risk: { liver: 2, stomach: 3, endocrine: 0 }, advice: 'Hạn chế.' },
-                  { text: 'Thường xuyên ăn dưa cà nén', risk: { liver: 4, stomach: 5, endocrine: 0 }, advice: 'Nhiều muối hại dạ dày.' },
-                  { text: 'Nghiện dưa muối xổi (còn xanh, hăng)', risk: { liver: 6, stomach: 10, endocrine: 0 }, advice: 'Chứa hàm lượng Nitrit cực cao.' }
-                ]
-              },
-              {
-                id: 'temp',
-                text: '15. Nhiệt độ thức ăn ưa thích?',
-                options: [
-                  { text: 'Nguội / Mát', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'An toàn.' },
-                  { text: 'Ấm vừa phải', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Tốt nhất cho tiêu hóa.' },
-                  { text: 'Nóng (Vừa thổi vừa ăn)', risk: { liver: 0, stomach: 5, endocrine: 0 }, advice: 'Cẩn thận niêm mạc.' },
-                  { text: 'Rất nóng (Bỏng rát lưỡi mới ngon)', risk: { liver: 0, stomach: 12, endocrine: 0 }, advice: 'NGUY HIỂM: Gây viêm teo và ung thư thực quản.' }
-                ]
-              },
-              {
-                id: 'alcohol',
-                text: '16. Mức độ sử dụng rượu bia?',
-                options: [
-                  { text: 'Không uống', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Gan được bảo vệ tối đa.' },
-                  { text: 'Xã giao (1-2 chén/tháng)', risk: { liver: 2, stomach: 1, endocrine: 1 }, advice: 'Gan đủ sức phục hồi.' },
-                  { text: 'Thường xuyên (Tuần nào cũng nhậu)', risk: { liver: 7, stomach: 5, endocrine: 4 }, advice: 'Gánh nặng lớn cho gan.' },
-                  { text: 'Hàng ngày / Nghiện rượu', risk: { liver: 12, stomach: 8, endocrine: 7 }, advice: 'BÁO ĐỘNG: Acetaldehyde phá hủy tế bào gan trực tiếp.' }
-                ]
-              },
-              {
-                id: 'grill',
-                text: '17. Thói quen ăn đồ nướng/chiên rán?',
-                options: [
-                  { text: 'Hấp luộc là chính', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Lành mạnh.' },
-                  { text: 'Thỉnh thoảng (Cuối tuần)', risk: { liver: 2, stomach: 1, endocrine: 0 }, advice: 'Chấp nhận được.' },
-                  { text: 'Thường xuyên (3-4 lần/tuần)', risk: { liver: 5, stomach: 4, endocrine: 2 }, advice: 'Nạp nhiều chất oxy hóa.' },
-                  { text: 'Rất thích ăn cháy cạnh/giòn tan', risk: { liver: 8, stomach: 7, endocrine: 3 }, advice: 'Chứa HCA và PAH gây đột biến gen.' }
-                ]
-              },
-              {
-                id: 'fruits',
-                text: '18. Ăn trái cây hàng ngày?',
-                options: [
-                  { text: 'Ăn đa dạng các loại mỗi ngày', risk: { liver: -3, stomach: -2, endocrine: -2 }, advice: 'Tốt.' },
-                  { text: 'Thường xuyên (3-4 lần/tuần)', risk: { liver: -1, stomach: -1, endocrine: -1 }, advice: 'Khá.' },
-                  { text: 'Thỉnh thoảng mới ăn', risk: { liver: 2, stomach: 1, endocrine: 0 }, advice: 'Thiếu Vitamin.' },
-                  { text: 'Gần như không ăn', risk: { liver: 4, stomach: 3, endocrine: 1 }, advice: 'Thiếu hụt vi chất bảo vệ.' }
-                ]
-              },
-              {
-                id: 'nuts',
-                text: '19. Ăn các loại hạt (Lạc, vừng, óc chó)?',
-                options: [
-                  { text: 'Thường xuyên (làm bữa phụ)', risk: { liver: -2, stomach: 0, endocrine: -2 }, advice: 'Giàu Omega-3.' },
-                  { text: 'Thỉnh thoảng', risk: { liver: 0, stomach: 0, endocrine: 0 }, advice: 'Tốt.' },
-                  { text: 'Hiếm khi', risk: { liver: 1, stomach: 0, endocrine: 0 }, advice: 'Bỏ lỡ nguồn chất béo tốt.' },
-                  { text: 'Không ăn', risk: { liver: 2, stomach: 0, endocrine: 0 }, advice: 'Thiếu Selen.' }
-                ]
-              },
-              {
-                id: 'spices',
-                text: '20. Sử dụng gia vị thảo mộc (Tỏi, nghệ, gừng)?',
-                options: [
-                  { text: 'Dùng rất nhiều trong mọi món', risk: { liver: -4, stomach: -3, endocrine: -2 }, advice: 'Kháng sinh tự nhiên cực mạnh.' },
-                  { text: 'Dùng bình thường', risk: { liver: -1, stomach: -1, endocrine: 0 }, advice: 'Tốt.' },
-                  { text: 'Ít dùng', risk: { liver: 2, stomach: 1, endocrine: 0 }, advice: 'Nên tăng cường.' },
-                  { text: 'Không ăn được / Ghét mùi', risk: { liver: 4, stomach: 3, endocrine: 1 }, advice: 'Thiếu hụt chất kháng viêm tự nhiên.' }
-                ]
-              }
-            ]
-          }
-        ];
+  SURVEY_SECTIONS.forEach(section => {
+    section.questions.forEach(q => {
+      const ansIdx = answers[q.id];
+      if (ansIdx !== undefined) {
+        const opt = q.options[ansIdx];
+        
+        scores.liver += opt.risk.liver;
+        scores.stomach += opt.risk.stomach;
+        scores.endocrine += opt.risk.endocrine;
 
-        const calculateStats = (answers) => {
-          let scores = {
-            liver: 0, stomach: 0, endocrine: 0,
-            totalToxin: 0, protection: 0,
-            inflammatory: 0,
-            acidic: 0,
-            antioxidant: 0
-          };
-           
-          let criticalIssues = [];
-          let dietProfile = { type: '', desc: '' };
+        const riskSum = Math.max(0, opt.risk.liver) + Math.max(0, opt.risk.stomach) + Math.max(0, opt.risk.endocrine);
+        if (riskSum > 0) scores.totalToxin += riskSum;
+        
+        const protectSum = Math.min(0, opt.risk.liver) + Math.min(0, opt.risk.stomach) + Math.min(0, opt.risk.endocrine);
+        scores.protection += Math.abs(protectSum);
 
-          SURVEY_SECTIONS.forEach(section => {
-            section.questions.forEach(q => {
-              const ansIdx = answers[q.id];
-              if (ansIdx !== undefined) {
-                const opt = q.options[ansIdx];
-                
-                scores.liver += opt.risk.liver;
-                scores.stomach += opt.risk.stomach;
-                scores.endocrine += opt.risk.endocrine;
+        if (['processed_meat', 'oil', 'alcohol', 'red_meat', 'grill'].includes(q.id)) {
+          if (ansIdx >= 2) scores.inflammatory += 20;
+        }
+        if (['veggies', 'fruits', 'spices'].includes(q.id)) {
+          if (ansIdx <= 1) scores.antioxidant += 25;
+          if (ansIdx >= 2) scores.acidic += 15;
+        }
+        if (q.id === 'temp' && ansIdx === 3) scores.inflammatory += 15;
 
-                const riskSum = Math.max(0, opt.risk.liver) + Math.max(0, opt.risk.stomach) + Math.max(0, opt.risk.endocrine);
-                if (riskSum > 0) scores.totalToxin += riskSum;
-                
-                const protectSum = Math.min(0, opt.risk.liver) + Math.min(0, opt.risk.stomach) + Math.min(0, opt.risk.endocrine);
-                scores.protection += Math.abs(protectSum);
+        if (ansIdx === 3) {
+          criticalIssues.push({ question: q.text, answer: opt.text, advice: opt.advice });
+        }
+      }
+    });
+  });
 
-                if (['processed_meat', 'oil', 'alcohol', 'red_meat', 'grill'].includes(q.id)) {
-                  if (ansIdx >= 2) scores.inflammatory += 20;
-                }
-                if (['veggies', 'fruits', 'spices'].includes(q.id)) {
-                  if (ansIdx <= 1) scores.antioxidant += 25;
-                  if (ansIdx >= 2) scores.acidic += 15;
-                }
-                if (q.id === 'temp' && ansIdx === 3) scores.inflammatory += 15;
+  if (scores.inflammatory > 30) {
+    dietProfile = { 
+      type: 'CHẾ ĐỘ ĂN GÂY VIÊM (High-Inflammatory)', 
+      desc: 'Bạn đang nạp quá nhiều tác nhân gây sưng/viêm tế bào (Đường, mỡ xấu, hóa chất). Đây là môi trường lý tưởng để tế bào ung thư phát triển.' 
+    };
+  } else if (scores.antioxidant < 20) {
+    dietProfile = { 
+      type: 'CHẾ ĐỘ ĂN THIẾU HỤT (Depleted)', 
+      desc: 'Bạn không nhất thiết ăn đồ độc, nhưng bạn đang "bỏ đói" hệ miễn dịch vì thiếu rau xanh và gia vị bảo vệ.' 
+    };
+  } else {
+    dietProfile = { 
+      type: 'CHẾ ĐỘ ĂN CÂN BẰNG (Balanced)', 
+      desc: 'Bạn có sự cân bằng tốt giữa nhóm đa lượng và vi lượng. Hệ miễn dịch đang hoạt động hiệu quả.' 
+    };
+  }
 
-                if (ansIdx === 3) {
-                  criticalIssues.push({ question: q.text, answer: opt.text, advice: opt.advice });
-                }
-              }
-            });
-          });
+  return { scores, criticalIssues, dietProfile };
+};
 
-          if (scores.inflammatory > 30) {
-            dietProfile = { 
-              type: 'CHẾ ĐỘ ĂN GÂY VIÊM', 
-              desc: 'Bạn đang nạp quá nhiều tác nhân gây sưng/viêm tế bào (Đường, mỡ xấu, hóa chất). Đây là môi trường lý tưởng để tế bào ung thư phát triển.' 
-            };
-          } else if (scores.antioxidant < 20) {
-            dietProfile = { 
-              type: 'CHẾ ĐỘ ĂN THIẾU HỤT', 
-              desc: 'Bạn không nhất thiết ăn đồ độc, nhưng bạn đang "bỏ đói" hệ miễn dịch vì thiếu rau xanh và gia vị bảo vệ.' 
-            };
-          } else {
-            dietProfile = { 
-              type: 'CHẾ ĐỘ ĂN CÂN BẰNG', 
-              desc: 'Bạn có sự cân bằng tốt giữa nhóm đa lượng và vi lượng. Hệ miễn dịch đang hoạt động hiệu quả.' 
-            };
-          }
+const generateMenu = (analysis) => {
+  const { criticalIssues, dietProfile } = analysis;
+  let menu = [];
 
-          return { scores, criticalIssues, dietProfile };
-        };
+  if (dietProfile.type.includes('GÂY VIÊM')) {
+    menu = [
+      { meal: 'Sáng', dish: 'Yến mạch nấu sữa hạt / Trứng luộc', note: 'Tuyệt đối tránh đồ chiên rán, bún phở nhiều mỡ.' },
+      { meal: 'Trưa', dish: 'Cá hấp gừng + Rau cải luộc (300g)', note: 'Tăng cường Omega-3 kháng viêm.' },
+      { meal: 'Chiều', dish: 'Nước ép Cần tây / Ổi', note: 'Thải độc cấp tốc.' },
+      { meal: 'Tối', dish: 'Salad ức gà dầu ô liu', note: 'Nhẹ bụng, giảm áp lực cho gan.' }
+    ];
+  } else if (dietProfile.type.includes('THIẾU HỤT')) {
+    menu = [
+      { meal: 'Sáng', dish: 'Bánh mì nguyên cám + Bơ sáp', note: 'Bổ sung chất béo tốt.' },
+      { meal: 'Trưa', dish: 'Cơm gạo lứt + Tôm rim nghệ + Canh bầu', note: 'Nghệ giúp kích hoạt hệ miễn dịch.' },
+      { meal: 'Chiều', dish: 'Sữa chua + Hạt (Óc chó/Hạnh nhân)', note: 'Bổ sung vi khoáng.' },
+      { meal: 'Tối', dish: 'Súp bí đỏ thịt bằm', note: 'Giàu Beta-carotene bảo vệ niêm mạc.' }
+    ];
+  } else {
+    menu = [
+      { meal: 'Sáng', dish: 'Phở bò chín (Nấu tại nhà/Quán sạch)', note: 'Duy trì thói quen tốt.' },
+      { meal: 'Trưa', dish: 'Cơm trắng + Thịt kho trứng + Dưa chua chín tới', note: 'Cân bằng đạm và men vi sinh.' },
+      { meal: 'Chiều', dish: 'Trái cây theo mùa', note: 'Vitamin tự nhiên.' },
+      { meal: 'Tối', dish: 'Canh cua mồng tơi + Đậu phụ lướt ván', note: 'Đạm thực vật lành mạnh.' }
+    ];
+  }
 
-        const generateMenu = (analysis) => {
-          const { criticalIssues, dietProfile } = analysis;
-          let menu = [];
+  const plasticIssue = criticalIssues.find(c => c.question.includes('đồ ăn NÓNG'));
+  if (plasticIssue) {
+    menu.push({ meal: 'LƯU Ý QUAN TRỌNG', dish: 'TUYỆT ĐỐI KHÔNG DÙNG TÚI NILON', note: 'Hãy mua cặp lồng Inox ngay hôm nay. Đây là việc quan trọng nhất bạn cần làm.' });
+  }
 
-          if (dietProfile.type.includes('GÂY VIÊM')) {
-            menu = [
-              { meal: 'Sáng', dish: 'Yến mạch nấu sữa hạt / Trứng luộc', note: 'Tuyệt đối tránh đồ chiên rán, bún phở nhiều mỡ.' },
-              { meal: 'Trưa', dish: 'Cá hấp gừng + Rau cải luộc (300g)', note: 'Tăng cường Omega-3 kháng viêm.' },
-              { meal: 'Chiều', dish: 'Nước ép Cần tây / Ổi', note: 'Thải độc cấp tốc.' },
-              { meal: 'Tối', dish: 'Salad ức gà dầu ô liu', note: 'Nhẹ bụng, giảm áp lực cho gan.' }
-            ];
-          } else if (dietProfile.type.includes('THIẾU HỤT')) {
-            menu = [
-              { meal: 'Sáng', dish: 'Bánh mì nguyên cám + Bơ sáp', note: 'Bổ sung chất béo tốt.' },
-              { meal: 'Trưa', dish: 'Cơm gạo lứt + Tôm rim nghệ + Canh bầu', note: 'Nghệ giúp kích hoạt hệ miễn dịch.' },
-              { meal: 'Chiều', dish: 'Sữa chua + Hạt (Óc chó/Hạnh nhân)', note: 'Bổ sung vi khoáng.' },
-              { meal: 'Tối', dish: 'Súp bí đỏ thịt bằm', note: 'Giàu Beta-carotene bảo vệ niêm mạc.' }
-            ];
-          } else {
-            menu = [
-              { meal: 'Sáng', dish: 'Phở bò chín (Nấu tại nhà/Quán sạch)', note: 'Duy trì thói quen tốt.' },
-              { meal: 'Trưa', dish: 'Cơm trắng + Thịt kho trứng + Dưa chua chín tới', note: 'Cân bằng đạm và men vi sinh.' },
-              { meal: 'Chiều', dish: 'Trái cây theo mùa', note: 'Vitamin tự nhiên.' },
-              { meal: 'Tối', dish: 'Canh cua mồng tơi + Đậu phụ lướt ván', note: 'Đạm thực vật lành mạnh.' }
-            ];
-          }
+  return menu;
+};
 
-          const plasticIssue = criticalIssues.find(c => c.question.includes('đồ ăn NÓNG'));
-          if (plasticIssue) {
-            menu.push({ meal: 'LƯU Ý QUAN TRỌNG', dish: 'TUYỆT ĐỐI KHÔNG DÙNG TÚI NILON', note: 'Hãy mua cặp lồng Inox ngay hôm nay. Đây là việc quan trọng nhất bạn cần làm.' });
-          }
+export default function AntiCancerExpertUltimate() {
+  const [step, setStep] = useState('intro'); 
+  const [currentSection, setCurrentSection] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [analysis, setAnalysis] = useState(null);
 
-          return menu;
-        };
+  const handleAnswer = (qId, optIdx) => {
+    setAnswers(prev => ({ ...prev, [qId]: optIdx }));
+  };
 
-        // --- COMPONENT CHÍNH ---
-        function AntiCancerExpertUltimate() {
-          const [step, setStep] = useState('intro'); 
-          const [currentSection, setCurrentSection] = useState(0);
-          const [answers, setAnswers] = useState({});
-          const [analysis, setAnalysis] = useState(null);
+  const nextSection = () => {
+    if (currentSection < SURVEY_SECTIONS.length - 1) {
+      setCurrentSection(prev => prev + 1);
+      window.scrollTo(0,0);
+    } else {
+      setStep('analyzing');
+      setAnalysis(calculateStats(answers));
+      setTimeout(() => setStep('result'), 2500);
+    }
+  };
 
-          const handleAnswer = (qId, optIdx) => {
-            setAnswers(prev => ({ ...prev, [qId]: optIdx }));
-          };
+  const IntroScreen = () => (
+    <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute inset-0 bg-cover opacity-10 blur-sm" style={{backgroundImage: "url('https://images.unsplash.com/photo-1584036561566-b9397f803add?q=80&w=1000&auto=format&fit=crop')"}}></div>
+      <div className="z-10 text-center max-w-3xl">
+        <div className="flex justify-center mb-6">
+          <div className="bg-emerald-500/20 p-5 rounded-full border-2 border-emerald-400/30 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+            <Microscope size={56} className="text-emerald-400" />
+          </div>
+        </div>
+        <div className="inline-block bg-emerald-900/50 border border-emerald-500/30 rounded-full px-4 py-1 text-sm text-emerald-300 font-bold mb-4 tracking-wider">
+          PHIÊN BẢN FINAL - ULTIMATE EDITION
+        </div>
+        <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tight leading-tight">
+          CHUYÊN GIA <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">PHÂN TÍCH UNG THƯ</span>
+        </h1>
+        <p className="text-slate-300 text-lg md:text-xl mb-10 leading-relaxed max-w-2xl mx-auto">
+          Hệ thống AI thế hệ mới với độ phân giải <strong>4 cấp độ rủi ro</strong>.
+          <br/>Phân tích không chỉ nguy cơ bệnh lý mà còn <strong className="text-white">giải mã chế độ dinh dưỡng</strong> hiện tại của bạn.
+        </p>
+        <button onClick={() => setStep('survey')} className="bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold px-10 py-5 rounded-2xl text-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.5)] flex items-center gap-3 mx-auto transform hover:scale-105 active:scale-95">
+          <Stethoscope size={24} /> Bắt đầu Khám
+        </button>
+      </div>
+    </div>
+  );
 
-          const nextSection = () => {
-            if (currentSection < SURVEY_SECTIONS.length - 1) {
-              setCurrentSection(prev => prev + 1);
-              window.scrollTo(0,0);
-            } else {
-              setStep('analyzing');
-              setAnalysis(calculateStats(answers));
-              setTimeout(() => setStep('result'), 2500);
-            }
-          };
+  const SurveyScreen = () => (
+    <div className="min-h-screen bg-slate-50 pb-20">
+      <div className="bg-white sticky top-0 z-20 shadow-sm border-b border-slate-200">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex justify-between items-center text-sm font-bold text-slate-500 uppercase mb-2">
+            <span>Tiến độ phân tích</span>
+            <span>{currentSection + 1}/{SURVEY_SECTIONS.length}</span>
+          </div>
+          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${((currentSection + 1) / SURVEY_SECTIONS.length) * 100}%` }}></div>
+          </div>
+        </div>
+      </div>
 
-          const IntroScreen = () => (
-            <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
-              <div className="absolute inset-0 bg-cover opacity-10 blur-sm" style={{backgroundImage: "url('https://images.unsplash.com/photo-1584036561566-b9397f803add?q=80&w=1000&auto=format&fit=crop')"}}></div>
-              <div className="z-10 text-center max-w-3xl">
-                <div className="flex justify-center mb-6">
-                  <div className="bg-emerald-500/20 p-5 rounded-full border-2 border-emerald-400/30 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
-                    <Microscope size={56} className="text-emerald-400" />
-                  </div>
-                </div>
-                <div className="inline-block bg-emerald-900/50 border border-emerald-500/30 rounded-full px-4 py-1 text-sm text-emerald-300 font-bold mb-4 tracking-wider">
-                  PHIÊN BẢN FINAL - ULTIMATE EDITION
-                </div>
-                <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tight leading-tight">
-                  CHUYÊN GIA <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">PHÂN TÍCH UNG THƯ</span>
-                </h1>
-                <p className="text-slate-300 text-lg md:text-xl mb-10 leading-relaxed max-w-2xl mx-auto">
-                  Hệ thống AI thế hệ mới với độ phân giải <strong>4 cấp độ rủi ro</strong>.
-                  <br/>Phân tích không chỉ nguy cơ bệnh lý mà còn <strong className="text-white">giải mã chế độ dinh dưỡng</strong> hiện tại của bạn.
-                </p>
-                <button onClick={() => setStep('survey')} className="bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold px-10 py-5 rounded-2xl text-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.5)] flex items-center gap-3 mx-auto transform hover:scale-105 active:scale-95">
-                  <Stethoscope size={24} /> Bắt đầu Khám
-                </button>
-              </div>
-            </div>
-          );
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="mb-8 animate-in slide-in-from-bottom-4 duration-500">
+          <h2 className="text-3xl font-bold text-slate-800 mb-2">{SURVEY_SECTIONS[currentSection].title}</h2>
+          <p className="text-slate-500 text-lg">{SURVEY_SECTIONS[currentSection].desc}</p>
+        </div>
 
-          const SurveyScreen = () => (
-            <div className="min-h-screen bg-slate-50 pb-20 text-slate-900">
-              <div className="bg-white sticky top-0 z-20 shadow-sm border-b border-slate-200">
-                <div className="max-w-4xl mx-auto px-4 py-4">
-                  <div className="flex justify-between items-center text-sm font-bold text-slate-500 uppercase mb-2">
-                    <span>Tiến độ phân tích</span>
-                    <span>{currentSection + 1}/{SURVEY_SECTIONS.length}</span>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${((currentSection + 1) / SURVEY_SECTIONS.length) * 100}%` }}></div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="max-w-4xl mx-auto px-4 py-8">
-                <div className="mb-8">
-                  <h2 className="text-3xl font-bold text-slate-800 mb-2">{SURVEY_SECTIONS[currentSection].title}</h2>
-                  <p className="text-slate-500 text-lg">{SURVEY_SECTIONS[currentSection].desc}</p>
-                </div>
-
-                <div className="space-y-8">
-                  {SURVEY_SECTIONS[currentSection].questions.map((q, idx) => (
-                    <div key={q.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                      <h3 className="font-bold text-lg text-slate-800 mb-4 flex gap-3">
-                        <span className="bg-slate-100 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 mt-0.5">{idx + 1}</span>
-                        {q.text}
-                      </h3>
-                      <div className="grid md:grid-cols-2 gap-3">
-                        {q.options.map((opt, optIdx) => (
-                          <button
-                            key={optIdx}
-                            onClick={() => handleAnswer(q.id, optIdx)}
-                            className={`text-left p-4 rounded-xl border-2 transition-all flex flex-col gap-1 relative ${
-                              answers[q.id] === optIdx
-                                ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 shadow-md ring-1 ring-emerald-500'
-                                : 'border-slate-100 bg-slate-50 hover:bg-white hover:border-emerald-200'
-                            }`}
-                          >
-                            <span className="font-bold text-sm">{opt.text}</span>
-                            {answers[q.id] === optIdx && (
-                              <div className="absolute top-3 right-3 text-emerald-600"><CheckCircle size={18}/></div>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-12 flex justify-end">
+        <div className="space-y-8">
+          {SURVEY_SECTIONS[currentSection].questions.map((q, idx) => (
+            <div key={q.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h3 className="font-bold text-lg text-slate-800 mb-4 flex gap-3">
+                <span className="bg-slate-100 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 mt-0.5">{idx + 1}</span>
+                {q.text}
+              </h3>
+              <div className="grid md:grid-cols-2 gap-3">
+                {q.options.map((opt, optIdx) => (
                   <button
-                    onClick={nextSection}
-                    disabled={!SURVEY_SECTIONS[currentSection].questions.every(q => answers[q.id] !== undefined)}
-                    className={`px-8 py-4 rounded-xl font-bold text-lg flex items-center gap-2 transition-all ${
-                      SURVEY_SECTIONS[currentSection].questions.every(q => answers[q.id] !== undefined)
-                        ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-xl transform hover:-translate-y-1'
-                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    key={optIdx}
+                    onClick={() => handleAnswer(q.id, optIdx)}
+                    className={`text-left p-4 rounded-xl border-2 transition-all flex flex-col gap-1 relative ${
+                      answers[q.id] === optIdx
+                        ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 shadow-md ring-1 ring-emerald-500'
+                        : 'border-slate-100 bg-slate-50 hover:bg-white hover:border-emerald-200'
                     }`}
                   >
-                    {currentSection === SURVEY_SECTIONS.length - 1 ? 'Xử lý Dữ liệu' : 'Tiếp tục'} <ArrowRight />
+                    <span className="font-bold text-sm">{opt.text}</span>
+                    {answers[q.id] === optIdx && (
+                      <div className="absolute top-3 right-3 text-emerald-600"><CheckCircle size={18}/></div>
+                    )}
                   </button>
-                </div>
+                ))}
               </div>
             </div>
-          );
+          ))}
+        </div>
 
-          const AnalyzingScreen = () => (
-            <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center text-center p-6">
-              <div className="relative w-40 h-40 mb-8">
-                <div className="absolute inset-0 border-4 border-slate-700 rounded-full"></div>
-                <div className="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"></div>
-                <Brain size={64} className="absolute inset-0 m-auto text-emerald-500 animate-pulse" />
-              </div>
-              <h2 className="text-3xl font-bold mb-4">AI đang phân tích hồ sơ...</h2>
-              <div className="space-y-3 text-emerald-400/80 font-mono text-sm text-left inline-block">
-                <p className="animate-pulse flex items-center gap-2"><CheckCircle size={14}/> Đang quét 4 cấp độ rủi ro...</p>
-                <p className="animate-pulse delay-150 flex items-center gap-2"><CheckCircle size={14}/> Đang tính toán tải lượng Axit/Kiềm...</p>
-                <p className="animate-pulse delay-300 flex items-center gap-2"><CheckCircle size={14}/> Đang đo lường chỉ số Oxy hóa...</p>
-                <p className="animate-pulse delay-500 flex items-center gap-2"><CheckCircle size={14}/> Đang lập phác đồ dinh dưỡng...</p>
-              </div>
+        <div className="mt-12 flex justify-end">
+          <button
+            onClick={nextSection}
+            disabled={!SURVEY_SECTIONS[currentSection].questions.every(q => answers[q.id] !== undefined)}
+            className={`px-8 py-4 rounded-xl font-bold text-lg flex items-center gap-2 transition-all ${
+              SURVEY_SECTIONS[currentSection].questions.every(q => answers[q.id] !== undefined)
+                ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-xl transform hover:-translate-y-1'
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+            }`}
+          >
+            {currentSection === SURVEY_SECTIONS.length - 1 ? 'Xử lý Dữ liệu' : 'Tiếp tục'} <ArrowRight />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const AnalyzingScreen = () => (
+    <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center text-center p-6">
+      <div className="relative w-40 h-40 mb-8">
+        <div className="absolute inset-0 border-4 border-slate-700 rounded-full"></div>
+        <div className="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"></div>
+        <Brain size={64} className="absolute inset-0 m-auto text-emerald-500 animate-pulse" />
+      </div>
+      <h2 className="text-3xl font-bold mb-4">AI đang phân tích hồ sơ...</h2>
+      <div className="space-y-3 text-emerald-400/80 font-mono text-sm text-left inline-block">
+        <p className="animate-pulse flex items-center gap-2"><CheckCircle size={14}/> Đang quét 4 cấp độ rủi ro...</p>
+        <p className="animate-pulse delay-150 flex items-center gap-2"><CheckCircle size={14}/> Đang tính toán tải lượng Axit/Kiềm...</p>
+        <p className="animate-pulse delay-300 flex items-center gap-2"><CheckCircle size={14}/> Đang đo lường chỉ số Oxy hóa...</p>
+        <p className="animate-pulse delay-500 flex items-center gap-2"><CheckCircle size={14}/> Đang lập phác đồ dinh dưỡng...</p>
+      </div>
+    </div>
+  );
+
+  const ResultScreen = () => {
+    const { scores, criticalIssues, dietProfile } = analysis;
+    const liverPercent = Math.min(100, (scores.liver / 40) * 100);
+    const stomachPercent = Math.min(100, (scores.stomach / 40) * 100);
+    
+    return (
+      <div className="min-h-screen bg-slate-50 pb-20 font-sans">
+        {/* Header Report */}
+        <div className="bg-slate-900 text-white p-6 pb-24 shadow-2xl relative overflow-hidden">
+          <div className="max-w-5xl mx-auto relative z-10">
+            <div className="flex justify-between items-start mb-8">
+               <div className="flex items-center gap-3">
+                 <div className="bg-white/10 p-2 rounded-lg backdrop-blur"><Activity className="text-emerald-400"/></div>
+                 <div>
+                   <h1 className="text-2xl font-bold">BÁO CÁO PHÂN TÍCH CHUYÊN SÂU</h1>
+                   <p className="text-slate-400 text-sm">Mã hồ sơ: #AI-FINAL-2024</p>
+                 </div>
+               </div>
+               <button onClick={() => window.location.reload()} className="p-2 hover:bg-white/10 rounded-full transition"><RefreshCcw/></button>
             </div>
-          );
+          </div>
+          <div className="absolute -bottom-10 -right-10 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl"></div>
+        </div>
 
-          const ResultScreen = () => {
-            const { scores, criticalIssues, dietProfile } = analysis;
-            const liverPercent = Math.min(100, (scores.liver / 40) * 100);
-            const stomachPercent = Math.min(100, (scores.stomach / 40) * 100);
-            
-            return (
-              <div className="min-h-screen bg-slate-50 pb-20 font-sans text-slate-900">
-                <div className="bg-slate-900 text-white p-6 pb-24 shadow-2xl relative overflow-hidden">
-                  <div className="max-w-5xl mx-auto relative z-10">
-                    <div className="flex justify-between items-start mb-8">
-                       <div className="flex items-center gap-3">
-                         <div className="bg-white/10 p-2 rounded-lg backdrop-blur"><Activity /></div>
-                         <div>
-                           <h1 className="text-2xl font-bold">BÁO CÁO PHÂN TÍCH CHUYÊN SÂU</h1>
-                           <p className="text-slate-400 text-sm">Mã hồ sơ: #AI-FINAL-2024</p>
-                         </div>
-                       </div>
-                       <button onClick={() => window.location.reload()} className="p-2 hover:bg-white/10 rounded-full transition"><RefreshCcw/></button>
-                    </div>
+        <div className="max-w-5xl mx-auto px-4 -mt-16 space-y-8 relative z-20">
+          
+          {/* 1. NEW SECTION: PHÂN TÍCH CHẾ ĐỘ DINH DƯỠNG HIỆN TẠI */}
+          <div className="bg-white rounded-3xl p-8 shadow-xl border-t-8 border-emerald-500 grid md:grid-cols-2 gap-8 items-center">
+            <div>
+              <div className="flex items-center gap-2 text-emerald-600 font-bold mb-2 tracking-wider uppercase text-sm">
+                <PieChart size={18}/> Dinh dưỡng hiện tại của bạn
+              </div>
+              <h2 className="text-3xl font-black text-slate-800 mb-4">{dietProfile.type}</h2>
+              <p className="text-slate-600 text-lg leading-relaxed">{dietProfile.desc}</p>
+            </div>
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+              <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Zap size={18}/> Chỉ số Sinh hóa (Ước tính):</h3>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-slate-600">Mức độ Gây viêm (Inflammation)</span>
+                    <span className="font-bold text-red-500">{scores.inflammatory > 30 ? 'CAO' : 'THẤP'}</span>
                   </div>
-                  <div className="absolute -bottom-10 -right-10 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl"></div>
+                  <div className="h-2 bg-slate-200 rounded-full"><div className={`h-full rounded-full ${scores.inflammatory > 30 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{width: `${Math.min(100, scores.inflammatory*1.5)}%`}}></div></div>
                 </div>
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-slate-600">Khả năng Chống Oxy hóa</span>
+                    <span className="font-bold text-blue-500">{scores.antioxidant > 20 ? 'TỐT' : 'YẾU'}</span>
+                  </div>
+                  <div className="h-2 bg-slate-200 rounded-full"><div className={`h-full rounded-full ${scores.antioxidant > 20 ? 'bg-blue-500' : 'bg-orange-400'}`} style={{width: `${Math.min(100, scores.antioxidant*2)}%`}}></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-                <div className="max-w-5xl mx-auto px-4 -mt-16 space-y-8 relative z-20">
-                  <div className="bg-white rounded-3xl p-8 shadow-xl border-t-8 border-emerald-500 grid md:grid-cols-2 gap-8 items-center">
+          {/* 2. RỦI RO TỪNG TẠNG */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded-3xl shadow-lg border border-slate-100">
+              <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4"><Filter size={20}/> RỦI RO GAN (Liver)</h3>
+              <div className="flex items-end gap-2 mb-2">
+                <span className="text-4xl font-black text-slate-800">{liverPercent.toFixed(0)}%</span>
+                <span className="text-sm text-slate-400 mb-1">mức độ tổn thương</span>
+              </div>
+              <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                <div className={`h-full transition-all duration-1000 ${liverPercent > 50 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{width: `${liverPercent}%`}}></div>
+              </div>
+              <p className="mt-3 text-sm text-slate-500">Đến từ: Nấm mốc (Aflatoxin), Rượu, Nhựa.</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-3xl shadow-lg border border-slate-100">
+              <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4"><Flame size={20}/> RỦI RO DẠ DÀY (Stomach)</h3>
+              <div className="flex items-end gap-2 mb-2">
+                <span className="text-4xl font-black text-slate-800">{stomachPercent.toFixed(0)}%</span>
+                <span className="text-sm text-slate-400 mb-1">mức độ tổn thương</span>
+              </div>
+              <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                <div className={`h-full transition-all duration-1000 ${stomachPercent > 50 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{width: `${stomachPercent}%`}}></div>
+              </div>
+              <p className="mt-3 text-sm text-slate-500">Đến từ: Nhiệt độ thức ăn, Vi khuẩn, Muối Nitrit.</p>
+            </div>
+          </div>
+
+          {/* 3. CẢNH BÁO ĐỎ (CRITICAL) */}
+          {criticalIssues.length > 0 && (
+            <div className="bg-red-50 border-2 border-red-500 rounded-3xl p-8 shadow-sm animate-pulse-slow">
+              <h3 className="text-2xl font-black text-red-700 mb-6 flex items-center gap-3">
+                <AlertOctagon size={32} /> CÁC YẾU TỐ "TỬ THẦN" CẦN LOẠI BỎ NGAY
+              </h3>
+              <div className="grid gap-4">
+                {criticalIssues.map((issue, idx) => (
+                  <div key={idx} className="bg-white p-5 rounded-xl shadow-sm border border-red-100 flex flex-col md:flex-row gap-4 items-start">
+                    <div className="bg-red-100 text-red-600 font-bold px-3 py-1 rounded text-sm shrink-0">Báo động #{idx+1}</div>
                     <div>
-                      <div className="flex items-center gap-2 text-emerald-600 font-bold mb-2 tracking-wider uppercase text-sm">
-                        <PieChart size={18}/> Dinh dưỡng hiện tại của bạn
-                      </div>
-                      <h2 className="text-3xl font-black text-slate-800 mb-4">{dietProfile.type}</h2>
-                      <p className="text-slate-600 text-lg leading-relaxed">{dietProfile.desc}</p>
-                    </div>
-                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                      <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Zap size={18}/> Chỉ số Sinh hóa (Ước tính):</h3>
-                      <div className="space-y-4">
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-slate-600">Mức độ Gây viêm</span>
-                            <span className="font-bold text-red-500">{scores.inflammatory > 30 ? 'CAO' : 'THẤP'}</span>
-                          </div>
-                          <div className="h-2 bg-slate-200 rounded-full"><div className={`h-full rounded-full ${scores.inflammatory > 30 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{width: `${Math.min(100, scores.inflammatory*1.5)}%`}}></div></div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-slate-600">Khả năng Chống Oxy hóa</span>
-                            <span className="font-bold text-blue-500">{scores.antioxidant > 20 ? 'TỐT' : 'YẾU'}</span>
-                          </div>
-                          <div className="h-2 bg-slate-200 rounded-full"><div className={`h-full rounded-full ${scores.antioxidant > 20 ? 'bg-blue-500' : 'bg-orange-400'}`} style={{width: `${Math.min(100, scores.antioxidant*2)}%`}}></div></div>
-                        </div>
-                      </div>
+                      <p className="text-slate-500 text-sm mb-1">{issue.question}</p>
+                      <p className="font-bold text-red-600 text-lg mb-2">{issue.answer}</p>
+                      <p className="text-slate-700 bg-slate-50 p-2 rounded text-sm"><span className="font-bold">Bác sĩ khuyên:</span> {issue.advice}</p>
                     </div>
                   </div>
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="bg-white p-6 rounded-3xl shadow-lg border border-slate-100">
-                      <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4"><Filter size={20}/> RỦI RO GAN (Liver)</h3>
-                      <div className="flex items-end gap-2 mb-2">
-                        <span className="text-4xl font-black text-slate-800">{liverPercent.toFixed(0)}%</span>
-                        <span className="text-sm text-slate-400 mb-1">mức độ tổn thương</span>
-                      </div>
-                      <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                        <div className={`h-full transition-all duration-1000 ${liverPercent > 50 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{width: `${liverPercent}%`}}></div>
-                      </div>
-                      <p className="mt-3 text-sm text-slate-500">Đến từ: Nấm mốc (Aflatoxin), Rượu, Nhựa.</p>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-3xl shadow-lg border border-slate-100">
-                      <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4"><Flame size={20}/> RỦI RO DẠ DÀY (Stomach)</h3>
-                      <div className="flex items-end gap-2 mb-2">
-                        <span className="text-4xl font-black text-slate-800">{stomachPercent.toFixed(0)}%</span>
-                        <span className="text-sm text-slate-400 mb-1">mức độ tổn thương</span>
-                      </div>
-                      <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                        <div className={`h-full transition-all duration-1000 ${stomachPercent > 50 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{width: `${stomachPercent}%`}}></div>
-                      </div>
-                      <p className="mt-3 text-sm text-slate-500">Đến từ: Nhiệt độ thức ăn, Vi khuẩn, Muối Nitrit.</p>
-                    </div>
-                  </div>
-
-                  {criticalIssues.length > 0 && (
-                    <div className="bg-red-50 border-2 border-red-500 rounded-3xl p-8 shadow-sm animate-pulse-slow">
-                      <h3 className="text-2xl font-black text-red-700 mb-6 flex items-center gap-3">
-                        <AlertOctagon size={32} /> CÁC YẾU TỐ "TỬ THẦN" CẦN LOẠI BỎ NGAY
-                      </h3>
-                      <div className="grid gap-4">
-                        {criticalIssues.map((issue, idx) => (
-                          <div key={idx} className="bg-white p-5 rounded-xl shadow-sm border border-red-100 flex flex-col md:flex-row gap-4 items-start">
-                            <div className="bg-red-100 text-red-600 font-bold px-3 py-1 rounded text-sm shrink-0">Báo động #{idx+1}</div>
-                            <div>
-                              <p className="text-slate-500 text-sm mb-1">{issue.question}</p>
-                              <p className="font-bold text-red-600 text-lg mb-2">{issue.answer}</p>
-                              <p className="text-slate-700 bg-slate-50 p-2 rounded text-sm"><span className="font-bold">Bác sĩ khuyên:</span> {issue.advice}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-slate-100">
-                    <div className="bg-emerald-50 p-6 border-b border-emerald-100 flex items-center gap-3">
-                      <div className="bg-emerald-200 p-2 rounded text-emerald-800"><ChefHat /></div>
-                      <div>
-                        <h3 className="text-xl font-bold text-slate-800">Phác Đồ Dinh Dưỡng Điều Trị</h3>
-                        <p className="text-emerald-700 text-sm">Được thiết kế để khắc phục: {dietProfile.type}</p>
-                      </div>
-                    </div>
-                    <div className="p-6 grid md:grid-cols-2 gap-4">
-                      {generateMenu({ criticalIssues, dietProfile }).map((item, idx) => (
-                        <div key={idx} className="flex gap-4 p-4 rounded-xl border border-slate-100 hover:border-emerald-400 hover:shadow-md transition-all bg-white">
-                          <div className="shrink-0 w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-500 text-xs uppercase">
-                            {item.meal.slice(0,3)}
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-lg text-slate-800">{item.dish}</h4>
-                            <p className="text-slate-500 text-sm flex items-start gap-1 mt-1">
-                              <Info size={14} className="text-blue-500 shrink-0 mt-0.5"/> {item.note}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                </div>
+                ))}
               </div>
-            );
-          };
+            </div>
+          )}
 
-          const root = ReactDOM.createRoot(document.getElementById('root'));
-          root.render(<AntiCancerExpertUltimate />);
-    </script>
-</body>
-</html>
+          {/* 4. PHÁC ĐỒ DINH DƯỠNG */}
+          <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-slate-100">
+            <div className="bg-emerald-50 p-6 border-b border-emerald-100 flex items-center gap-3">
+              <div className="bg-emerald-200 p-2 rounded text-emerald-800"><ChefHat /></div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-800">Phác Đồ Dinh Dưỡng Điều Trị</h3>
+                <p className="text-emerald-700 text-sm">Được thiết kế để khắc phục: {dietProfile.type}</p>
+              </div>
+            </div>
+            <div className="p-6 grid md:grid-cols-2 gap-4">
+              {generateMenu({ criticalIssues, dietProfile }).map((item, idx) => (
+                <div key={idx} className="flex gap-4 p-4 rounded-xl border border-slate-100 hover:border-emerald-400 hover:shadow-md transition-all bg-white">
+                  <div className="shrink-0 w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-500 text-xs uppercase">
+                    {item.meal.slice(0,3)}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg text-slate-800">{item.dish}</h4>
+                    <p className="text-slate-500 text-sm flex items-start gap-1 mt-1">
+                      <Info size={14} className="text-blue-500 shrink-0 mt-0.5"/> {item.note}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      {step === 'intro' && <IntroScreen />}
+      {step === 'survey' && <SurveyScreen />}
+      {step === 'analyzing' && <AnalyzingScreen />}
+      {step === 'result' && analysis && <ResultScreen />}
+    </div>
+  );
+}
